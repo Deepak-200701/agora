@@ -369,7 +369,7 @@ const Register = () => {
                                     {...register(field.name)}
                                     id={field.name}
                                     type={field.type}
-                                    className={`block w-full rounded-sm bg-white px-3 py-1.5 text-base text-gray-900 outline outline-1 
+                                    className={`block w-full rounded-sm bg-white px-3 py-1.5 text-base text-gray-900 outline-1 
                     ${errors[field.name] ? 'outline-red-500' : 'outline-gray-500'} 
                     placeholder:text-gray-400 sm:text-sm`}
                                     placeholder={errors[field.name]?.message || field.label}
