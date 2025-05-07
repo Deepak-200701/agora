@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import Cookies from 'js-cookie';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
-import { addMessage } from '../redux/reducers/chat.reducer';
+// import { addMessage } from '../redux/reducers/chat.reducer';
 import { Bounce, toast } from 'react-toastify';
 import { useAgoraChat } from '../hooks/useAgoraChat';
 
