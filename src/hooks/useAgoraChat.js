@@ -16,7 +16,7 @@ export const useAgoraChat = () => {
   const dispatch = useDispatch();
 
   // Handle message status updates consistently
-  const updateMessageStatusHandler = useCallback((messageId, newStatus) => {
+  const updateMessageStatusHandler = useCallback(async(messageId, newStatus) => {
     setChats(prev => {
       const index = prev.findIndex(msg => msg.id === messageId);
       if (index === -1) return prev;
@@ -91,11 +91,10 @@ export const useAgoraChat = () => {
 
     try {
       const senderId = Cookies.get("username");
-      debugger
       const message = await agoraService.sendMessage(senderId, receiverId, text);
-
-
+      
       const payload = {
+        messageId: message.id,
         from: senderId,
         to: message.to,
         msg: message.msg,

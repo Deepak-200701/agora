@@ -94,7 +94,7 @@ const Login = () => {
 
     return (
         <div className="w-full min-h-screen flex flex-col justify-center items-center bg-slate-50">
-            <h1 className="text-3xl mb-8 underline underline-offset-8 font-bold text-center">Agora Chat</h1>
+            <h1 className="text-3xl mb-8font-bold text-center">Login</h1>
             <div className="flex flex-col w-[40%] mx-auto">
                 {
                     !isOtpSent ? (
