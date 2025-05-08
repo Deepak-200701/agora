@@ -1,5 +1,6 @@
 import AgoraChat from 'agora-chat';
 import Cookies from 'js-cookie';
+import { Bounce, toast } from 'react-toastify';
 import { v4 as uuidv4 } from 'uuid';
 
 class AgoraService {
@@ -7,6 +8,8 @@ class AgoraService {
     this.client = null;
     this.eventHandlers = new Map();
     this.isInitialized = false;
+    this.recieverId = ""
+    this.conversations = [];
   }
 
   initialize() {
@@ -109,7 +112,7 @@ class AgoraService {
   // Send read receipt for a message
   // async sendReadReceipt(message) {
   //   console.log("from reciept", message);
-    
+
   //   if (!this.client) return;
 
   //   try {
@@ -123,18 +126,26 @@ class AgoraService {
   //       }
   //   };
   //   const msg = AgoraChat.message.create(options);
-    
+
   //   this.client?.send(msg);
   //   } catch (error) {
   //     console.error("Error sending read receipt:", error);
   //   }
   // }
 
+  setReciever(id) {
+    this.recieverId = id
+  }
+
+  getReciever() {
+    return this.recieverId
+  }
+
   async sendReadReceipt(message) {
-    console.log("from receipt", message);
-    
+    if (message.from !== this.recieverId) return
+
     if (!this.client) return;
-    
+
     try {
       // For message-level read receipt
       const options = {
@@ -143,16 +154,58 @@ class AgoraService {
         to: message.from,       // The user ID of the message sender
         id: message.id,         // The ID of the message being acknowledged as read
       };
-      
+
       // Create the read receipt message
       const msg = AgoraChat.message.create(options);
-      
+
       // Send the read receipt
       await this.client.send(msg);
     } catch (error) {
       console.error("Error sending read receipt:", error);
     }
   }
+
+  async getConversationsList() {
+    const conversations = await this.client.getConversationlist()
+    this.conversations = conversations;
+  }
+
+  async getMessages(userId) {
+    try {
+      // const messages = await this.client.getServerConversations({ pageSize: 50, cursor: "" })
+      // return messages;
+      const messages = await this.client.getHistoryMessages({
+        targetId: userId, // The user ID of the peer user for one-to-one chat or group ID for group chat.
+        chatType: "singleChat", // The chat type: `singleChat` for one-to-one chat or `groupChat` for group chat.
+        pageSize: 200, // The number of messages to retrieve per page. The value range is [1,50] and the default value is 20.
+        searchDirection: "down", // The message search direction: `up` means to retrieve messages in the descending order of the message timestamp and `down` means to retrieve messages in the ascending order of the message timestamp.
+        searchOptions: {
+          // from: "message sender userID", // The user ID of the message sender. This parameter is used only for group chat.
+          msgTypes: ["txt"], // An array of message types for query. If no value is passed in, all types of message will be queried.
+          startTime: new Date("2025,5,8").getTime(), // The start timestamp for query. The unit is millisecond.
+          endTime: new Date("2025,5,9").getTime(), // The end timestamp for query. The unit is millisecond.
+        },
+      });
+
+      return messages
+
+    }
+    catch (error) {
+      return toast.error(error.message, {
+        position: "bottom-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: false,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: "light",
+        transition: Bounce,
+      });
+    }
+  }
+
+
 }
 
 // Create a singleton instance

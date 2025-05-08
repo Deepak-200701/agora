@@ -6,10 +6,13 @@ import axios from 'axios';
 // import { addMessage } from '../redux/reducers/chat.reducer';
 import { Bounce, toast } from 'react-toastify';
 import { useAgoraChat } from '../hooks/useAgoraChat';
+import agoraService from '../services/agoraService';
+import AgoraChat from 'agora-chat';
+import { addMessage, updateMessageStatus } from '../redux/reducers/chat.reducer';
 
 function ChatWindow() {
     const API_URL = import.meta.env.VITE_API_URL;
-    const { isConnected, chats, setChats, sendMessage, handleLogout } = useAgoraChat();
+    const { isConnected, chats, setChats, sendMessage, handleLogout, getUnReadMessages, removeUnreadMessage } = useAgoraChat();
 
     // State management
     const [message, setMessage] = useState("");
@@ -19,13 +22,15 @@ function ChatWindow() {
     const [avatar, setAvatar] = useState("");
     const [recipientName, setRecipientName] = useState("");
     const [recipientAvatar, setRecipientAvatar] = useState("");
+    const [currentChats, setCurrentChats] = useState([])
 
     // References and hooks
     const [searchParams, setSearchParams] = useSearchParams();
     const navigate = useNavigate();
     const dispatch = useDispatch();
     const messagesEndRef = useRef(null);
-    const reduxChat = useSelector(state => state.chats);
+    const reduxChat = useSelector(state => state.chat.messages);
+    const unReadMessages = useSelector(state => state.chat.unReadMessages);
 
     // Track current peer ID (recipient)
     const [peerId, setPeerId] = useState("");
@@ -33,16 +38,30 @@ function ChatWindow() {
     const username = Cookies.get("username");
     const receiverId = searchParams.get("user")
 
-    // Filter messages by the current chat
-    const currentChats = chats.filter(
-        msg => (msg.from === username && msg.to === receiverId) ||
-            (msg.to === username && msg.from === receiverId)
-    );
-
     // Scroll to bottom of messages
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
+
+    // useEffect(() => {
+    //     if (chats && chats.length) {
+    //         for (let i = 0; i < unReadMessages?.length; i++) {
+    //             const msg = unReadMessages[i];
+    //             alert(msg.id)
+    //             updateMessageStatusHandler(msg.id, "read")
+    //         }
+    //     }
+    // }, [unReadMessages, chats])
+
+    useEffect(() => {
+        // Filter messages by the current chat
+        const currentChats = chats.filter(
+            msg => (msg.from === username && msg.to === receiverId) ||
+                (msg.to === username && msg.from === receiverId)
+        );
+        setCurrentChats(currentChats)
+    }, [chats])
+
 
     // Effect to scroll to bottom when messages change
     useEffect(() => {
@@ -54,6 +73,8 @@ function ChatWindow() {
         if (!searchParams.get("user") && users?.length > 0) {
             setSearchParams({ user: users[0]?.username });
         }
+        
+        sendUnReadMessageReciept(users[0]?.username)
     }, [users, searchParams]);
 
     // Initial data loading
@@ -73,6 +94,7 @@ function ChatWindow() {
         const currentPeerId = searchParams.get("user");
         if (currentPeerId && currentPeerId !== peerId) {
             setPeerId(currentPeerId);
+            agoraService.setReciever(currentPeerId);
         }
     }, [searchParams]);
 
@@ -130,7 +152,7 @@ function ChatWindow() {
             // Update with fetched messages
             if (data?.data?.length) {
                 setChats(data.data);
-                // dispatch(initialMessages(data.data));
+                dispatch(addMessage(data.data));
             } else {
                 setChats([]);
             }
@@ -139,10 +161,61 @@ function ChatWindow() {
         }
     };
 
+    // const getUnreadMessages = async () => {
+    //     const channelInfos = agoraService.conversations.data.channel_infos;
+    //     const unreadIds = [];
+
+    //     channelInfos.forEach(info => {
+    //         if (info.unread_num > 0 && info.lastMessage && info.lastMessage.id) {
+    //             unreadIds.push(info.lastMessage);
+    //         }
+    //     });
+
+    //     return unreadIds;
+    // }
+
+    const sendReadReceipt = (from, msgId) => {
+        // console.log("from reciept", message);
+        try {
+            const options = {
+                id: msgId,
+                chatType: "singleChat",
+                type: "channel",
+                to: from,
+            };
+            const msg = AgoraChat.message.create(options);
+
+            agoraService.client?.send(msg);
+        } catch (error) {
+            console.error("Error sending read receipt:", error);
+        }
+    }
+
+    const sendUnReadMessageReciept = (userId) => {
+        const unreadMessage = getUnReadMessages();
+
+        for (let i = 0; i < unreadMessage.length; i++) {
+            if (unreadMessage[i].from === userId) {
+                agoraService.sendReadReceipt(unreadMessage[i])
+                removeUnreadMessage(unreadMessage[i])
+            }
+        }
+    }
+
+
     // Handle user selection
-    const onSelectUser = (userId) => {
+    const onSelectUser = async (userId) => {
         setSearchParams({ user: userId });
         setPeerId(userId);
+        agoraService.setReciever(userId)
+        sendUnReadMessageReciept(userId)
+        // sendReadReceipt(userId)
+        // const options = {
+        //     to: message.userId,
+        //     id: "",
+        // };
+
+        // agoraService.sendReadReceipt(message)
     };
 
     // Handle logout

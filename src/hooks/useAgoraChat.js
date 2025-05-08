@@ -1,7 +1,7 @@
 // src/hooks/useAgoraChat.js
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useDispatch } from 'react-redux';
-import { addMessage, updateMessageStatus } from '../redux/reducers/chat.reducer';
+import { addMessage, addUnreadMessage, updateMessageStatus } from '../redux/reducers/chat.reducer';
 import agoraService from '../services/agoraService';
 import Cookies from 'js-cookie';
 import { login, logout } from '../redux/reducers/auth.reducer';
@@ -15,8 +15,15 @@ export const useAgoraChat = () => {
   const handlerId = useRef(`chat_handler_${Date.now()}`);
   const dispatch = useDispatch();
 
-  // Handle message status updates consistently
-  const updateMessageStatusHandler = useCallback(async(messageId, newStatus) => {
+  const updateMessageStatusHandler = useCallback(async (messageId, newStatus) => {
+
+    if (!["sent", "delivered", "read"].includes(status)) {
+      await axios.put(
+        `${import.meta.env.VITE_API_URL}/message`,
+        { messageId: messageId, status: newStatus }
+      )
+    }
+
     setChats(prev => {
       const index = prev.findIndex(msg => msg.id === messageId);
       if (index === -1) return prev;
@@ -29,7 +36,6 @@ export const useAgoraChat = () => {
     dispatch(updateMessageStatus({ id: messageId, status: newStatus }));
   }, [dispatch]);
 
-  // Initialize connection with stored credentials
   const initializeFromStorage = useCallback(async () => {
     const username = Cookies.get('username');
     const token = Cookies.get('agora_access_token');
@@ -39,6 +45,7 @@ export const useAgoraChat = () => {
     try {
       setIsConnecting(true);
       await agoraService.connect(username, token);
+      await agoraService.getConversationsList()
       setIsConnected(true);
       dispatch(login());
       return true;
@@ -50,7 +57,6 @@ export const useAgoraChat = () => {
     }
   }, [dispatch]);
 
-  // Handle login with new credentials
   const handleLogin = useCallback(async (username, token) => {
     if (!username || !token) return false;
 
@@ -69,7 +75,7 @@ export const useAgoraChat = () => {
     }
   }, [dispatch]);
 
-  // Handle logout
+
   const handleLogout = useCallback(() => {
     agoraService.disconnect();
     setIsConnected(false);
@@ -82,7 +88,6 @@ export const useAgoraChat = () => {
     dispatch(logout());
   }, [dispatch]);
 
-  // Send a message
   const sendMessage = useCallback(async (receiverId, text, setMessage) => {
     if (!isConnected) {
       toast.error("Not connected to chat service");
@@ -92,7 +97,7 @@ export const useAgoraChat = () => {
     try {
       const senderId = Cookies.get("username");
       const message = await agoraService.sendMessage(senderId, receiverId, text);
-      
+
       const payload = {
         messageId: message.id,
         from: senderId,
@@ -105,7 +110,6 @@ export const useAgoraChat = () => {
 
       await axios.post(`${import.meta.env.VITE_API_URL}/message`, payload);
 
-      // Add message to local state with "sending" status
       const newMessage = { ...message, status: "sent" };
       setChats(prev => [...prev, newMessage]);
       dispatch(addMessage(newMessage));
@@ -119,12 +123,32 @@ export const useAgoraChat = () => {
     }
   }, [isConnected, dispatch]);
 
-  // Setup event handlers when component mounts
+
+  const setUnreadMessage = (message) => {
+    const unReadMessage = JSON.parse(localStorage.getItem("unReadMessage"));
+
+    if (unReadMessage && unReadMessage.length) {
+      const updatedMessages = [...unReadMessage, message];
+      localStorage.setItem("unReadMessage", JSON.stringify(updatedMessages));
+    } else {
+      localStorage.setItem("unReadMessage", JSON.stringify([message]));
+    }
+  }
+
+  const removeUnreadMessage = (msg) => {
+    const unReadMessage = JSON.parse(localStorage.getItem("unReadMessage")) || [];
+    const updatedMessages = unReadMessage.filter(message => message.id !== msg.id);
+    localStorage.setItem("unReadMessage", JSON.stringify(updatedMessages));
+  }
+
+  const getUnReadMessages = () => {
+    const unReadMessage = JSON.parse(localStorage.getItem("unReadMessage")) || [];
+    return unReadMessage;
+  }
+
   useEffect(() => {
-    // Initialize Agora service first
     agoraService.initialize();
 
-    // Set up event handlers
     const handlers = {
       onConnected: () => {
         console.log("Connected to Agora Chat");
@@ -137,10 +161,13 @@ export const useAgoraChat = () => {
       onTextMessage: (message) => {
         console.log("Received message:", message);
 
-        // Add received message to state
         const newMessage = { ...message, status: "received" };
         setChats(prev => [...prev, newMessage]);
         dispatch(addMessage(newMessage));
+        if (message.from !== agoraService.recieverId) {
+          setUnreadMessage(newMessage)
+          // dispatch(addUnreadMessage(newMessage))
+        }
 
         // Send read receipt
         agoraService.sendReadReceipt(message);
@@ -150,14 +177,21 @@ export const useAgoraChat = () => {
         updateMessageStatusHandler(message.mid, "delivered");
       },
       onReadMessage: (message) => {
-        console.log("Message read:", message.mid);
+        console.log("Message read:", message);
         updateMessageStatusHandler(message.mid, "read");
       },
+      onReceivedMessage: (message) => {
+        // alert("read recieve")
+        updateMessageStatusHandler(message.mid, "read");
+      }
       // onChannelMessage: (message) => {
+      //   // alert("fron chanel")
       //   // This is for read receipts
       //   if (message.type === "channel") {
-      //     console.log("Read receipt received:", message);
-      //     updateMessageStatusHandler(message.id, "read");
+      //     alert("t")
+      //     // console.log("fron chanel", message);
+      //     dispatch(addUnreadMessage(message))
+      //     // updateMessageStatusHandler(message.id, "read");
       //   }
       // },
       // onError: (error) => {
@@ -166,13 +200,11 @@ export const useAgoraChat = () => {
       // }
     };
 
-    // Add the event handler
+
     agoraService.addEventHandler(handlerId.current, handlers);
 
-    // Try to initialize from storage on mount
     initializeFromStorage();
 
-    // Clean up on unmount
     return () => {
       agoraService.removeEventHandler(handlerId.current);
     };
@@ -186,6 +218,9 @@ export const useAgoraChat = () => {
     sendMessage,
     handleLogin,
     handleLogout,
-    initializeFromStorage
+    initializeFromStorage,
+    setUnreadMessage,
+    removeUnreadMessage,
+    getUnReadMessages
   };
 };

@@ -2,6 +2,7 @@ import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
   messages: [],
+  unReadMessages: [],
 };
 
 const chatSlice = createSlice({
@@ -10,6 +11,9 @@ const chatSlice = createSlice({
   reducers: {
     addMessage: (state, action) => {
       state.messages.push(action.payload);
+    },
+    addUnreadMessage: (state, action) =>{
+      state.unReadMessages.push(action.payload)
     },
     updateMessageStatus: (state, action) => {
       const { id, status } = action.payload;
@@ -21,8 +25,11 @@ const chatSlice = createSlice({
     clearMessages: (state) => {
       state.messages = [];
     },
+    clearUnReadMessages: (state) => {
+      state.unReadMessages = [];
+    },
   },
 });
 
-export const { addMessage, updateMessageStatus, clearMessages } = chatSlice.actions;
+export const { addMessage,addUnreadMessage, updateMessageStatus, clearMessages, clearUnReadMessages } = chatSlice.actions;
 export default chatSlice.reducer;
