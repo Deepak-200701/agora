@@ -123,6 +123,49 @@ export const useAgoraChat = () => {
     }
   }, [isConnected, dispatch]);
 
+  const sendImageMessage = useCallback(async (receiverId, input, setImagePreview) => {
+    if (!isConnected) {
+      toast.error("Not connected to chat service");
+      return { success: false };
+    }
+
+    try {
+      const senderId = Cookies.get("username");
+      const message = await agoraService.sendImgMessage(senderId, receiverId, input);
+
+      const payload = {
+        messageId: message.id,
+        from: message.from,
+        to: message.to,
+        msg: message.msg,
+        timestamp: message.time,
+        type: message.type,
+        secret: message.secret,
+        thumb: message.thumb,
+        thumb_secret: message.thumb_secret,
+        url: message.url,
+        status: "sent"
+      };
+
+      console.log(payload, "image sent");
+      
+
+      // await axios.post(`${import.meta.env.VITE_API_URL}/message`, payload);
+
+      const newMessage = { ...message, status: "sent" };
+      setChats(prev => [...prev, newMessage]);
+      dispatch(addMessage(newMessage));
+      setImagePreview(null)
+      input.value = null
+
+      return { success: true, message: newMessage };
+    } catch (error) {
+      console.error("Failed to send message:", error);
+      toast.error(`Failed to send message: ${error.message}`);
+      return { success: false };
+    }
+  }, [isConnected, dispatch]);
+
 
   const setUnreadMessage = (message) => {
     const unReadMessage = JSON.parse(localStorage.getItem("unReadMessage"));
@@ -183,7 +226,20 @@ export const useAgoraChat = () => {
       onReceivedMessage: (message) => {
         // alert("read recieve")
         updateMessageStatusHandler(message.mid, "read");
-      }
+      },
+      onImageMessage: function (message) {
+        const newMessage = { ...message, status: "received" };
+        setChats(prev => [...prev, newMessage]);
+        dispatch(addMessage(newMessage));
+        if (message.from !== agoraService.recieverId) {
+          setUnreadMessage(newMessage)
+          // dispatch(addUnreadMessage(newMessage))
+        }
+
+        // Send read receipt
+        agoraService.sendReadReceipt(message);
+        
+      },
       // onChannelMessage: (message) => {
       //   // alert("fron chanel")
       //   // This is for read receipts
@@ -221,6 +277,7 @@ export const useAgoraChat = () => {
     initializeFromStorage,
     setUnreadMessage,
     removeUnreadMessage,
-    getUnReadMessages
+    getUnReadMessages,
+    sendImageMessage
   };
 };

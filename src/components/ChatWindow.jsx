@@ -12,7 +12,12 @@ import { addMessage, updateMessageStatus } from '../redux/reducers/chat.reducer'
 
 function ChatWindow() {
     const API_URL = import.meta.env.VITE_API_URL;
-    const { isConnected, chats, setChats, sendMessage, handleLogout, getUnReadMessages, removeUnreadMessage } = useAgoraChat();
+    const { isConnected, chats, setChats,
+        sendMessage, handleLogout, getUnReadMessages,
+        removeUnreadMessage, sendImageMessage,
+    } = useAgoraChat();
+
+    const inputRef = useRef(null)
 
     // State management
     const [message, setMessage] = useState("");
@@ -23,6 +28,7 @@ function ChatWindow() {
     const [recipientName, setRecipientName] = useState("");
     const [recipientAvatar, setRecipientAvatar] = useState("");
     const [currentChats, setCurrentChats] = useState([])
+    const [imagePreview, setImagePreview] = useState(null);
 
     // References and hooks
     const [searchParams, setSearchParams] = useSearchParams();
@@ -42,6 +48,22 @@ function ChatWindow() {
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
+
+    const handleFileUpload = async (e) => {
+        const file = e.target.files[0];
+        if (file && file.type.startsWith("image/")) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setImagePreview(reader.result);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // const data = await sendImageMessage(receiverId, e.target, setImagePreview);
+        // console.log(data, "image msg");
+    };
+
+    const removeImage = () => setImagePreview(null);
 
     // useEffect(() => {
     //     if (chats && chats.length) {
@@ -73,7 +95,7 @@ function ChatWindow() {
         if (!searchParams.get("user") && users?.length > 0) {
             setSearchParams({ user: users[0]?.username });
         }
-        
+
         sendUnReadMessageReciept(users[0]?.username)
     }, [users, searchParams]);
 
@@ -344,7 +366,17 @@ function ChatWindow() {
                                             : "bg-[#606c7e] text-white"
                                             }`}
                                     >
-                                        <div>{msg?.msg}</div>
+                                        {
+                                            msg?.type === "img" ? (
+                                                <img
+                                                    src={msg?.url}
+                                                    alt="Chat"
+                                                    className="rounded-lg mb-1 w-[80px]"
+                                                />
+                                            ) : (
+                                                <div>{msg?.msg}</div>
+                                            )
+                                        }
                                         <div className="text-xs mt-1 flex justify-between items-center text-gray-300">
                                             <span>{formatTimestamp(msg?.time || msg?.timestamp)}</span>
                                             {msg?.to !== username && msg?.status && (
@@ -369,24 +401,137 @@ function ChatWindow() {
 
                 {/* Input */}
                 {peerId && (
-                    <div className="p-4 border-t bg-white flex items-center gap-2">
-                        <input
-                            type="text"
-                            placeholder="Type a message..."
-                            className="flex-1 border border-gray-300 rounded px-4 py-2 outline-none focus:border-blue-500 transition"
-                            value={message}
-                            onChange={(e) => setMessage(e.target.value)}
-                            onKeyDown={handleKeyDown}
-                            disabled={!peerId}
-                        />
-                        <button
-                            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
-                            onClick={() => sendMessage(peerId, message, setMessage)}
-                            disabled={!peerId || !message.trim()}
-                        >
-                            Send
-                        </button>
+                    // <div className="p-4 border-t bg-white flex items-center gap-2">
+                    //     <input
+                    //         type="text"
+                    //         placeholder="Type a message..."
+                    //         className="flex-1 border border-gray-300 rounded px-4 py-2 outline-none focus:border-blue-500 transition"
+                    //         value={message}
+                    //         onChange={(e) => setMessage(e.target.value)}
+                    //         onKeyDown={handleKeyDown}
+                    //         disabled={!peerId}
+                    //     />
+                    //     <button
+                    //         className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    //         onClick={() => sendMessage(peerId, message, setMessage)}
+                    //         disabled={!peerId || !message.trim()}
+                    //     >
+                    //         Send
+                    //     </button>
+                    // </div>
+
+                    // <div className="p-4 border-t bg-white flex flex-col items-center gap-2">
+                    //     {/* Image Preview */}
+                    //     {imagePreview && (
+                    //         <div className="relative w-32 h-32">
+                    //             <img
+                    //                 src={imagePreview}
+                    //                 alt="Preview"
+                    //                 className="w-full h-full object-cover rounded-xl border border-gray-300"
+                    //             />
+                    //             <button
+                    //                 className="absolute top-0 right-0 bg-black bg-opacity-60 text-white rounded-full p-1 hover:bg-opacity-80"
+                    //                 onClick={removeImage}
+                    //             >
+                    //                 ✕
+                    //             </button>
+                    //         </div>
+                    //     )}
+                    //     {/* File Upload Button */}
+                    //     <label className="cursor-pointer bg-gray-100 border border-gray-300 rounded p-2 hover:bg-gray-200 transition flex items-center justify-center w-10 h-10">
+                    //         <input
+                    //             type="file"
+                    //             className="hidden"
+                    //             onChange={handleFileUpload} // You'll need to define this handler
+                    //         />
+                    //         <span className="text-xl font-bold text-gray-600">+</span>
+                    //     </label>
+
+                    //     {/* Message Input */}
+                    //     <input
+                    //         type="text"
+                    //         placeholder="Type a message..."
+                    //         className="flex-1 border border-gray-300 rounded px-4 py-2 outline-none focus:border-blue-500 transition"
+                    //         value={message}
+                    //         onChange={(e) => setMessage(e.target.value)}
+                    //         onKeyDown={handleKeyDown}
+                    //         disabled={!peerId}
+                    //     />
+
+                    //     {/* Send Button */}
+                    //     <button
+                    //         className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    //         onClick={() => sendMessage(peerId, message, setMessage)}
+                    //         disabled={!peerId || !message.trim()}
+                    //     >
+                    //         Send
+                    //     </button>
+                    // </div>
+
+                    <div className="p-4 border-t bg-white flex flex-col gap-2">
+                        {/* Image Preview */}
+                        {imagePreview && (
+                            <div className="relative w-16 h-16">
+                                <img
+                                    src={imagePreview}
+                                    alt="Preview"
+                                    className="w-full h-full object-cover rounded-xl border border-gray-300"
+                                />
+                                <button
+                                    className="text-[12px] w-5 h-5 p-[1px] absolute top-0 right-0 bg-black opacity-[0.6] text-white rounded-full hover:opacity-80"
+                                    onClick={removeImage}
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Input Row */}
+                        <div className="flex items-center gap-2">
+                            {/* File Upload Button */}
+                            <label className="cursor-pointer bg-gray-100 border border-gray-300 rounded p-2 hover:bg-gray-200 transition flex items-center justify-center w-10 h-10">
+                                <input
+                                    ref={inputRef}
+                                    type="file"
+                                    className="hidden"
+                                    accept="image/*"
+                                    onChange={handleFileUpload}
+                                />
+                                <span className="text-xl font-bold text-gray-600">+</span>
+                            </label>
+
+                            {/* Message Input */}
+                            <input
+                                type="text"
+                                placeholder="Type a message..."
+                                className="flex-1 border border-gray-300 rounded px-4 py-2 outline-none focus:border-blue-500 transition"
+                                value={message}
+                                onChange={(e) => setMessage(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                        sendMessage(peerId, message, setMessage, imagePreview);
+                                        setImagePreview(null);
+                                    }
+                                }}
+                                disabled={!peerId || imagePreview}
+                            />
+
+                            {/* Send Button */}
+                            <button
+                                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                onClick={() => {
+                                    imagePreview ?
+                                        sendImageMessage(receiverId, inputRef.current, setImagePreview) :
+                                        sendMessage(peerId, message, setMessage, imagePreview)
+                                }}
+                                disabled={!peerId || (!message.trim() && !imagePreview)}
+                            >
+                                Send
+                            </button>
+                        </div>
                     </div>
+
+
                 )}
             </div>
         </div>

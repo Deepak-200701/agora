@@ -109,6 +109,37 @@ class AgoraService {
     };
   }
 
+  async sendImgMessage(senderId, receiverId, input) {
+    // const input = document.getElementById("image");
+    const file = AgoraChat.utils.getFileUrl(input);
+    const allowType = { jpg: true, gif: true, png: true, bmp: true };
+
+    if (file.filetype.toLowerCase() in allowType) {
+      const options = {
+        type: "img",
+        file,
+        ext: { file_length: file.data.size },
+        from: senderId,
+        to: receiverId,
+        chatType: "singleChat",
+        onFileUploadError: () => console.log("Upload error"),
+        onFileUploadProgress: (e) => console.log("Upload progress:", e),
+        onFileUploadComplete: () => console.log("Upload complete"),
+      };
+
+      const msg = AgoraChat.message.create(options);
+      const serverMsg = await this.client.send(msg);
+
+      return {
+        ...serverMsg.message,
+        status: "sent" // Initial status
+      };
+
+    } else {
+      console.warn("Invalid file type selected.");
+    }
+  };
+
   // Send read receipt for a message
   // async sendReadReceipt(message) {
   //   console.log("from reciept", message);
