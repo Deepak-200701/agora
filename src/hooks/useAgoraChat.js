@@ -140,17 +140,16 @@ export const useAgoraChat = () => {
         msg: message.msg,
         timestamp: message.time,
         type: message.type,
-        secret: message.secret,
-        thumb: message.thumb,
-        thumb_secret: message.thumb_secret,
+        // secret: message.secret,
+        thumb_url: message.thumb,
+        // thumb_secret: message.thumb_secret,
         url: message.url,
         status: "sent"
       };
 
-      console.log(payload, "image sent");
-      
+      await axios.post(`${import.meta.env.VITE_API_URL}/message`, payload);
 
-      // await axios.post(`${import.meta.env.VITE_API_URL}/message`, payload);
+      console.log(payload, "image sent");
 
       const newMessage = { ...message, status: "sent" };
       setChats(prev => [...prev, newMessage]);

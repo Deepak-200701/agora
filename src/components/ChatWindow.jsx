@@ -49,22 +49,85 @@ function ChatWindow() {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
 
+    const isFileSizeValid = (file, maxSizeInMB) => {
+        const sizeInMB = file.size / (1024 * 1024);
+        return sizeInMB < maxSizeInMB;
+    };
+
     const handleFileUpload = async (e) => {
         const file = e.target.files[0];
-        if (file && file.type.startsWith("image/")) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setImagePreview(reader.result);
-            };
-            reader.readAsDataURL(file);
+        const maxFileSize = 5 * 1024 * 1024;
+        // const allowType = {
+        //     jpg: true,
+        //     jpeg: true,
+        //     gif: true,
+        //     png: true,
+        //     bmp: true
+        // }
+
+        if (!file) return;
+
+        // const parts = file.name.split('.');
+        // const fileExtension = parts.length > 1 ? parts.pop().toLowerCase() : '';
+
+        // if (!allowType[fileExtension]) {
+        //     return toast.info(
+        //         "Invalid file type. Please upload an image: jpg, jpeg, gif, png, bmp.",
+        //         {
+        //             position: "bottom-right",
+        //             autoClose: 3000,
+        //             hideProgressBar: false,
+        //             closeOnClick: true,
+        //             pauseOnHover: true,
+        //             draggable: true,
+        //         }
+        //     );
+        // }
+
+        if (!file.type.startsWith("image/")) {
+            return toast.info(
+                "Invalid file format. Only image file is accepted",
+                {
+                    position: "bottom-right",
+                    autoClose: 3000,
+                    hideProgressBar: false,
+                    closeOnClick: true,
+                    pauseOnHover: true,
+                    draggable: true,
+                }
+            );
         }
+
+        if (!isFileSizeValid(file, 5)) {
+            return toast.info(
+                "Maximum image size must be less than 5 MB",
+                {
+                    position: "bottom-right",
+                    autoClose: 3000,
+                    hideProgressBar: false,
+                    closeOnClick: true,
+                    pauseOnHover: true,
+                    draggable: true,
+                }
+            );
+        }
+
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setImagePreview(reader.result);
+        };
+        reader.readAsDataURL(file);
 
         // const data = await sendImageMessage(receiverId, e.target, setImagePreview);
         // console.log(data, "image msg");
-    };
+    }
 
-    const removeImage = () => setImagePreview(null);
-
+    const removeImage = () => {
+        setImagePreview(null);
+        if (inputRef?.current) {
+            inputRef.current.value = '';
+        }
+    }
     // useEffect(() => {
     //     if (chats && chats.length) {
     //         for (let i = 0; i < unReadMessages?.length; i++) {
@@ -362,17 +425,19 @@ function ChatWindow() {
                                 <div className="flex items-end space-x-2 max-w-md">
                                     <div
                                         className={`p-3 rounded-lg text-sm ${msg?.to !== username
-                                            ? "bg-blue-500 text-white"
-                                            : "bg-[#606c7e] text-white"
+                                            ? msg.type === "img" ? "" : "bg-blue-500 text-white"
+                                            : msg.type === "img" ? "" : "bg-[#606c7e] text-white"
                                             }`}
                                     >
                                         {
                                             msg?.type === "img" ? (
-                                                <img
-                                                    src={msg?.url}
-                                                    alt="Chat"
-                                                    className="rounded-lg mb-1 w-[80px]"
-                                                />
+                                                <div className={`${msg?.to !== username ? "bg-indigo-400" : "bg-gray-400"} w-[120px] rounded-lg p-1`}>
+                                                    <img
+                                                        src={msg?.thumb || msg?.thumb_url}
+                                                        alt="Chat"
+                                                        className="rounded-lg mb-1 bg-cover"
+                                                    />
+                                                </div>
                                             ) : (
                                                 <div>{msg?.msg}</div>
                                             )
@@ -507,12 +572,12 @@ function ChatWindow() {
                                 className="flex-1 border border-gray-300 rounded px-4 py-2 outline-none focus:border-blue-500 transition"
                                 value={message}
                                 onChange={(e) => setMessage(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
-                                        sendMessage(peerId, message, setMessage, imagePreview);
-                                        setImagePreview(null);
-                                    }
-                                }}
+                                // onKeyDown={(e) => {
+                                //     if (e.key === "Enter") {
+                                //         sendMessage(peerId, message, setMessage, imagePreview);
+                                //         setImagePreview(null);
+                                //     }
+                                // }}
                                 disabled={!peerId || imagePreview}
                             />
 
