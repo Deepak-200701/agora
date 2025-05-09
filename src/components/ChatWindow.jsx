@@ -153,14 +153,13 @@ function ChatWindow() {
         scrollToBottom();
     }, [reduxChat]);
 
-    // Set default user when users list is loaded
-    useEffect(() => {
-        if (!searchParams.get("user") && users?.length > 0) {
-            setSearchParams({ user: users[0]?.username });
-        }
-
-        sendUnReadMessageReciept(users[0]?.username)
-    }, [users, searchParams]);
+    // // Set default user when users list is loaded
+    // useEffect(() => {
+    //     if (!searchParams.get("user") && users?.length > 0) {
+    //         setSearchParams({ user: users[0]?.username });
+    //     }
+    //     sendUnReadMessageReciept(users[0]?.username)
+    // }, [users, searchParams]);
 
     // Initial data loading
     useEffect(() => {
@@ -280,6 +279,7 @@ function ChatWindow() {
         const unreadMessage = getUnReadMessages();
 
         for (let i = 0; i < unreadMessage.length; i++) {
+            // debugger
             if (unreadMessage[i].from === userId) {
                 agoraService.sendReadReceipt(unreadMessage[i])
                 removeUnreadMessage(unreadMessage[i])
